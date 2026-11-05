@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Handling difficult customers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --coral: #FF7C66;
+    --purple: #A03291;
+    --navy: #072B55;
+    --navy-2: #0A3566;
+    --gray: #EDEDED;
+    --white: #FFFFFF;
+    --text: #111111;
+    --green: #0EC38B;
+    --grad: linear-gradient(90deg, #FF7C66 0%, #A03291 100%);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-weight: 300; font-size: 16px; line-height: 1.5;
+    background: var(--gray); color: var(--text);
+  }
+  h1, h2, h3 { font-weight: 500; color: var(--navy); margin: 0; letter-spacing: -0.02em; }
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
+
+  .player { display: flex; flex-direction: column; min-height: 100vh; max-width: 1100px; margin: 0 auto; background: var(--white); box-shadow: 0 0 40px rgba(7,43,85,.12); }
+  .topbar { height: 6px; background: var(--grad); }
+  header.head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; background: var(--navy); color: #fff; }
+  .brand { font-weight: 600; font-size: 1.2rem; letter-spacing: -0.02em; }
+  .course { font-size: .9rem; opacity: .9; text-align: right; }
+  .progress-wrap { height: 6px; background: #D5DAE1; }
+  .progress-bar { height: 100%; width: 0; background: var(--grad); transition: width .35s ease; }
+
+  .body { flex: 1; display: flex; min-height: 0; }
+  nav.steps { width: 230px; flex: none; background: var(--gray); padding: 20px 14px; border-right: 1px solid #DCDCDC; }
+  nav.steps ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  nav.steps button {
+    width: 100%; text-align: left; display: flex; gap: 10px; align-items: center;
+    background: transparent; border: 0; border-radius: 10px; padding: 9px 10px; color: var(--navy); font-weight: 500; font-size: .88rem;
+  }
+  nav.steps button .dot {
+    flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    font-size: .75rem; font-weight: 600; background: #fff; color: var(--navy); border: 2px solid #C5CBD3;
+  }
+  nav.steps button[aria-current="step"] { background: #fff; box-shadow: 0 1px 4px rgba(7,43,85,.15); }
+  nav.steps button[aria-current="step"] .dot { background: var(--purple); border-color: var(--purple); color: #fff; }
+  nav.steps button.done .dot { background: var(--green); border-color: var(--green); color: #fff; }
+  nav.steps button:disabled { opacity: .45; cursor: not-allowed; }
+
+  main.stage { flex: 1; min-width: 0; padding: 28px 32px; display: flex; flex-direction: column; }
+  .screen { display: none; animation: fade .3s ease; }
+  .screen.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .screen h1:focus, .screen h2:focus { outline: none; }
+  .eyebrow { color: var(--purple); font-weight: 600; font-size: .8rem; margin-bottom: 6px; }
+  .rule { width: 56px; height: 4px; background: var(--coral); border-radius: 2px; margin: 12px 0 18px; }
+  .screen p { max-width: 65ch; }
+
+  .hero { background: var(--grad); color: #fff; border-radius: 16px; padding: 40px 32px; position: relative; overflow: hidden; }
+  .hero h1 { color: #fff; font-size: 2.2rem; line-height: 1.15; }
+  .hero p { color: #fff; margin: 12px 0 0; font-size: 1.05rem; }
+  .hero .orb { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #FFC1B5, #FF7C66 60%, #D9576F); opacity: .85; }
+  .hero .o1 { width: 170px; height: 170px; right: -40px; top: -50px; }
+  .hero .o2 { width: 70px; height: 70px; right: 130px; top: 40px; opacity: .6; }
+  .hero .o3 { width: 40px; height: 40px; right: 40px; bottom: 30px; opacity: .5; }
+  .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .chip { background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: 999px; padding: 4px 14px; font-size: .85rem; font-weight: 500; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 8px; }
+  .card { background: var(--gray); border-radius: 12px; padding: 16px; border-top: 4px solid var(--coral); }
+  .card:nth-child(2) { border-top-color: var(--purple); }
+  .card:nth-child(3) { border-top-color: #4B4FE2; }
+  .card .num { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--navy); color: #fff; font-weight: 600; font-size: .85rem; margin-bottom: 8px; }
+  .card h3 { font-size: 1rem; margin-bottom: 4px; }
+  .card p { margin: 0; font-size: .9rem; }
+
+  ul.obj { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; max-width: 65ch; }
+  ul.obj li { display: flex; gap: 12px; background: var(--gray); border-radius: 12px; padding: 14px 16px; }
+  ul.obj .tick { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--purple); color: #fff; display: grid; place-items: center; font-size: .8rem; font-weight: 600; }
+
+  .activity-frame { width: 100%; height: 640px; border: 1px solid #D5DAE1; border-radius: 12px; background: #fff; display: block; }
+  .gate { margin: 10px 0 0; font-size: .88rem; color: var(--navy); font-weight: 500; }
+  .gate.ok { color: #0A7F5A; }
+
+  .takeaways { display: grid; gap: 12px; max-width: 65ch; margin-top: 8px; }
+  .takeaways div { border-left: 5px solid var(--coral); background: var(--gray); border-radius: 0 12px 12px 0; padding: 12px 16px; }
+  .takeaways strong { color: var(--navy); font-weight: 600; }
+
+  footer.controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; border-top: 1px solid #DCDCDC; background: #fff; }
+  .count { font-size: .85rem; color: #4A5565; font-weight: 500; }
+  .nbtn { border-radius: 999px; padding: 10px 26px; font-weight: 600; border: 2px solid var(--navy); transition: transform .08s ease; }
+  .nbtn.back { background: #fff; color: var(--navy); }
+  .nbtn.back:hover:not(:disabled) { background: #EAF0F7; }
+  .nbtn.next { background: var(--navy); color: #fff; }
+  .nbtn.next:hover:not(:disabled) { background: var(--purple); border-color: var(--purple); }
+  .nbtn:disabled { opacity: .4; cursor: not-allowed; }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; white-space: nowrap; }
+
+  @media (max-width: 820px) {
+    nav.steps { display: none; }
+    main.stage { padding: 20px 16px; }
+    .course { display: none; }
+    .hero h1 { font-size: 1.7rem; }
+    .hero .o2, .hero .o3 { display: none; }
+    .hero .o1 { width: 110px; height: 110px; right: -35px; top: -40px; }
+  }
+  .hero > *:not(.orb) { position: relative; z-index: 1; }
+  @media (prefers-reduced-motion: reduce) { .screen { animation: none; } .progress-bar { transition: none; } }
+</style>
+</head>
+<body>
+<div class="player">
+  <div class="topbar" aria-hidden="true"></div>
+  <header class="head">
+    <div class="brand">Boomi</div>
+    <div class="course">Customer service skills</div>
+  </header>
+  <div class="progress-wrap" role="progressbar" aria-label="Course progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="pbar">
+    <div class="progress-bar" id="pfill"></div>
+  </div>
+
+  <div class="body">
+    <nav class="steps" aria-label="Course outline"><ol id="stepList"></ol></nav>
+
+    <main class="stage" id="stage">
+      <!-- 1 Welcome -->
+      <section class="screen" data-title="Welcome" aria-labelledby="s1">
+        <div class="hero">
+          <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
+          <h1 id="s1" tabindex="-1">Handling difficult customers</h1>
+          <p>Practice real scenarios, compare your instincts with a model answer, and build confidence for the tough conversations.</p>
+          <div class="meta"><span class="chip">About 10 minutes</span><span class="chip">6 scenarios</span><span class="chip">Self-paced</span></div>
+        </div>
+      </section>
+
+      <!-- 2 Objectives -->
+      <section class="screen" data-title="Objectives" aria-labelledby="s2">
+        <div class="eyebrow">Before you begin</div>
+        <h2 id="s2" tabindex="-1">What you will practice</h2>
+        <div class="rule"></div>
+        <p>By the end of this activity, you will be able to:</p>
+        <ul class="obj">
+          <li><span class="tick">1</span><span>Acknowledge a customer's frustration before moving to solutions.</span></li>
+          <li><span class="tick">2</span><span>Explain what you can do, rather than leading with what you cannot.</span></li>
+          <li><span class="tick">3</span><span>Commit to a clear next step with a time frame, and follow through.</span></li>
+        </ul>
+      </section>
+
+      <!-- 3 How it works -->
+      <section class="screen" data-title="How it works" aria-labelledby="s3">
+        <div class="eyebrow">Getting started</div>
+        <h2 id="s3" tabindex="-1">How the activity works</h2>
+        <div class="rule"></div>
+        <div class="cards">
+          <div class="card"><span class="num">1</span><h3>Spin</h3><p>Spin the wheel to land on a scenario, or pick one from the list.</p></div>
+          <div class="card"><span class="num">2</span><h3>Respond</h3><p>Read the situation and write what you would say or do.</p></div>
+          <div class="card"><span class="num">3</span><h3>Compare</h3><p>Reveal the model answer and reflect on how yours differs.</p></div>
+        </div>
+        <p style="margin-top:18px">Complete all six scenarios to unlock the next screen. There are no scores. Both answers are valid, so use this as a chance to reflect.</p>
+      </section>
+
+      <!-- 4 Activity -->
+      <section class="screen" data-title="Scenario roulette" aria-labelledby="s4">
+        <h2 id="s4" tabindex="-1" class="sr-only">Scenario roulette activity</h2>
+        <iframe class="activity-frame" id="activity" title="Scenario Roulette activity" src="scenario-roulette.html"></iframe>
+        <p class="gate" id="gate" aria-live="polite">Complete all 6 scenarios to continue.</p>
+      </section>
+
+      <!-- 5 Wrap-up -->
+      <section class="screen" data-title="Wrap-up" aria-labelledby="s5">
+        <div class="eyebrow">Well done</div>
+        <h2 id="s5" tabindex="-1">Key takeaways</h2>
+        <div class="rule"></div>
+        <div class="takeaways">
+          <div><strong>Listen first.</strong> Let the customer finish, then acknowledge the impact in your own words.</div>
+          <div><strong>Own the next step.</strong> Give a specific action and time frame, and confirm they are happy with it.</div>
+          <div><strong>Offer options.</strong> Lead with what is possible. If you need an exception, call it a request, not a promise.</div>
+          <div><strong>Follow up.</strong> Close the loop so the customer never has to chase you.</div>
+        </div>
+        <p style="margin-top:18px">You can close this window, or go back to replay the scenarios.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer class="controls">
+    <button class="nbtn back" id="back" type="button">Back</button>
+    <span class="count" id="count" aria-live="polite"></span>
+    <button class="nbtn next" id="next" type="button">Next</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var screens = Array.prototype.slice.call(document.querySelectorAll(".screen"));
+  var N = screens.length, ACTIVITY = 3;
+  var cur = 0, maxSeen = 0, activityDone = false;
+  var $ = function (id) { return document.getElementById(id); };
+  var back = $("back"), next = $("next"), count = $("count"), pfill = $("pfill"), pbar = $("pbar"),
+      list = $("stepList"), gate = $("gate"), frame = $("activity"), stage = $("stage");
+  var stepBtns = [];
+
+  screens.forEach(function (s, i) {
+    var li = document.createElement("li"), b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = '<span class="dot">' + (i + 1) + '</span><span></span>';
+    b.lastChild.textContent = s.getAttribute("data-title");
+    b.addEventListener("click", function () { go(i); });
+    li.appendChild(b); list.appendChild(li); stepBtns.push(b);
+  });
+
+  function canLeave(i) { return !(i === ACTIVITY && !activityDone); }
+  function reachable(i) {
+    if (i <= maxSeen) return true;
+    return false;
+  }
+
+  function render() {
+    screens.forEach(function (s, i) { s.classList.toggle("active", i === cur); });
+    stepBtns.forEach(function (b, i) {
+      if (i === cur) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      b.classList.toggle("done", i < cur || (i === ACTIVITY && activityDone && i !== cur));
+      b.disabled = !reachable(i) || (i > cur && !canLeave(cur) );
+    });
+    back.disabled = cur === 0;
+    var last = cur === N - 1;
+    next.textContent = last ? "Finish" : "Next";
+    next.disabled = !canLeave(cur);
+    count.textContent = "Screen " + (cur + 1) + " of " + N;
+    var pct = Math.round((cur / (N - 1)) * 100);
+    pfill.style.width = pct + "%";
+    pbar.setAttribute("aria-valuenow", pct);
+  }
+
+  function go(i) {
+    if (i < 0 || i >= N) return;
+    if (i > cur && !canLeave(cur)) return;
+    cur = i; if (cur > maxSeen) maxSeen = cur;
+    render();
+    stage.scrollTop = 0; window.scrollTo(0, 0);
+    var h = screens[cur].querySelector("h1,h2");
+    if (h) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
+  }
+
+  back.addEventListener("click", function () { go(cur - 1); });
+  next.addEventListener("click", function () {
+    if (cur === N - 1) { pfill.style.width = "100%"; pbar.setAttribute("aria-valuenow", 100); count.textContent = "Course complete"; return; }
+    go(cur + 1);
+  });
+
+  // Detect activity completion by watching its summary panel
+  function checkActivity() {
+    if (activityDone) return;
+    try {
+      var d = frame.contentDocument;
+      var sp = d && d.getElementById("summaryPanel");
+      if (sp && !sp.hidden) markDone();
+    } catch (e) { markDone(true); } // cross-origin fallback: do not trap the learner
+  }
+  function markDone(fallback) {
+    activityDone = true;
+    gate.textContent = fallback ? "Work through all 6 scenarios, then select Next." : "Activity complete. Select Next to continue.";
+    gate.classList.add("ok");
+    render();
+  }
+  setInterval(checkActivity, 500);
+
+  document.addEventListener("keydown", function (e) {
+    var t = e.target && e.target.tagName;
+    if (t === "TEXTAREA" || t === "INPUT") return;
+    if (e.altKey && e.key === "ArrowRight") { next.click(); }
+    if (e.altKey && e.key === "ArrowLeft") { back.click(); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
