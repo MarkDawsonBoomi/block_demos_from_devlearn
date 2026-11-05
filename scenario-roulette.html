@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scenario Roulette: Customer Service</title>
+<style>
+  :root {
+    --primary: #1B4965;
+    --accent: #F4A259;
+    --bg: #FAFAFA;
+    --text: #22303C;
+    --muted: #5B6B78;
+    --line: #D9E1E7;
+    --card: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* Fixed-height container, scrolls internally */
+  .app {
+    position: relative;
+    height: 600px;
+    max-height: 600px;
+    max-width: 760px;
+    margin: 0 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 16px 24px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    scrollbar-gutter: stable;
+  }
+
+  h1 { font-size: 1.25rem; margin: 0 0 2px; color: var(--primary); }
+  .sub { margin: 0 0 8px; color: var(--muted); font-size: 0.9rem; }
+  .progress { font-size: 0.85rem; font-weight: 600; color: var(--primary); margin: 0 0 8px; }
+
+  .stage { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  .wheel-wrap {
+    position: relative;
+    width: min(300px, 72vw);
+    aspect-ratio: 1 / 1;
+    margin-top: 14px;
+  }
+  .pointer {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 28px solid var(--primary);
+    z-index: 2;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+  }
+  .wheel {
+    width: 100%;
+    height: 100%;
+    display: block;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+  .wheel text { font-weight: 800; font-size: 16px; letter-spacing: 0.2px; pointer-events: none; }
+
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+  }
+  .spin {
+    background: var(--accent);
+    color: var(--primary);
+    border: 3px solid var(--primary);
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 1.4rem;
+    letter-spacing: 0.12em;
+    padding: 10px 44px;
+    min-width: 160px;
+    box-shadow: 0 3px 0 var(--primary);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .spin:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--primary); }
+  .spin:disabled { background: #E3E8EC; color: #7A8791; border-color: #B7C2CA; box-shadow: none; cursor: not-allowed; }
+  .hint { font-size: 0.85rem; color: var(--muted); margin: 0; min-height: 1.3em; text-align: center; }
+
+  details.picker { width: 100%; max-width: 420px; margin-top: 4px; }
+  details.picker summary { cursor: pointer; font-weight: 600; color: var(--primary); padding: 6px 0; }
+  .picker ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+  .picker button {
+    width: 100%; text-align: left; padding: 8px 12px;
+    background: var(--card); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; font-weight: 600;
+  }
+  .picker button:hover:not(:disabled) { border-color: var(--primary); }
+  .picker button:disabled { color: #8A949C; background: #EEF1F3; cursor: not-allowed; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--accent);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 18px;
+  }
+  .panel[hidden], [hidden] { display: none !important; }
+  .panel h2 { margin: 0 0 6px; font-size: 1.1rem; color: var(--primary); }
+  .panel h2:focus { outline: none; }
+  .panel h2:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+  .panel p { margin: 0 0 10px; }
+  .panel label { display: block; font-weight: 700; margin: 12px 0 4px; color: var(--primary); }
+  textarea {
+    width: 100%; min-height: 96px; resize: vertical;
+    font: inherit; color: var(--text);
+    padding: 10px; border: 1px solid #A9B7C1; border-radius: 8px; background: #fff;
+  }
+  .btn {
+    background: var(--primary); color: #fff; border: 2px solid var(--primary);
+    border-radius: 8px; padding: 9px 16px; font-weight: 700; margin-top: 10px;
+  }
+  .btn:hover { background: #163B52; }
+  .btn.alt { background: #fff; color: var(--primary); }
+  .btn.alt:hover { background: #EAF1F6; }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .model { background: #FFF6EC; border: 1px solid var(--accent); border-radius: 8px; padding: 10px 12px; margin-top: 12px; }
+  .model strong { color: var(--primary); }
+  .thanks { margin-top: 10px; font-weight: 600; color: var(--primary); }
+
+  .summary { border-left-color: var(--primary); }
+  .summary .big { font-size: 1.05rem; }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  @media (max-width: 480px) {
+    .app { padding: 12px 12px 20px; }
+    .spin { font-size: 1.25rem; padding: 10px 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spin { transition: none; }
+    .app { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+<main class="app" id="app" aria-labelledby="title">
+  <h1 id="title">Scenario Roulette: Difficult Customers</h1>
+  <p class="sub">Spin the wheel, read the scenario, write your response, then compare it with a model answer.</p>
+  <p class="progress" id="progress">0 of 6 scenarios completed</p>
+
+  <div class="stage">
+    <div class="wheel-wrap">
+      <div class="pointer" aria-hidden="true"></div>
+      <svg class="wheel" id="wheel" viewBox="0 0 400 400" role="img" aria-label="Scenario wheel"></svg>
+    </div>
+    <button class="spin" id="spinBtn" type="button">SPIN</button>
+    <p class="hint" id="hint">Press SPIN to land on a scenario.</p>
+
+    <details class="picker" id="picker">
+      <summary>Pick a scenario instead of spinning</summary>
+      <ul id="pickList"></ul>
+    </details>
+  </div>
+
+  <section class="panel" id="scenarioPanel" hidden aria-labelledby="scenarioTitle">
+    <h2 id="scenarioTitle" tabindex="-1"></h2>
+    <p id="scenarioText"></p>
+
+    <label for="response">How would you respond?</label>
+    <textarea id="response" placeholder="Type what you would say or do..."></textarea>
+    <button class="btn" id="showBtn" type="button">Show model answer</button>
+
+    <div class="model" id="modelBox" hidden>
+      <strong>Model answer</strong>
+      <p id="modelText" style="margin:6px 0 0"></p>
+    </div>
+
+    <div class="row" id="rateRow" hidden>
+      <button class="btn alt" id="sameBtn" type="button">I'd have said something similar</button>
+      <button class="btn alt" id="diffBtn" type="button">I'd have handled it differently</button>
+    </div>
+    <p class="thanks" id="thanks" hidden></p>
+  </section>
+
+  <section class="panel summary" id="summaryPanel" hidden aria-labelledby="summaryTitle">
+    <h2 id="summaryTitle" tabindex="-1">Summary</h2>
+    <p class="big" id="summaryText"></p>
+    <p id="summaryNote">Both answers are valid. This is a chance to reflect, not a score.</p>
+    <button class="btn" id="resetBtn" type="button">Reset</button>
+  </section>
+
+  <div class="sr-only" id="live" aria-live="polite" aria-atomic="true"></div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var SCENARIOS = [
+    {
+      label: "Angry Caller",
+      text: "A customer phones in shouting. Their internet has been down for three days, two previous agents promised a fix, and nobody has called back. They demand to know why they are paying for a service that does not work.",
+      model: "Let them finish without interrupting. Acknowledge the frustration and apologize for the experience: \"Three days without service is not acceptable, and I'm sorry no one followed up.\" Take ownership: \"I'm going to stay with you until we have a plan.\" Review the account, give a specific next step with a time frame, confirm they are happy with it, and arrange a follow-up so they do not have to chase you."
+    },
+    {
+      label: "Refund Demand",
+      text: "A customer bought a blender 45 days ago. Your return window is 30 days. They want a full refund now and say the product never worked properly.",
+      model: "Empathize first, then get the facts: \"I'm sorry it hasn't worked well. Can you tell me what's happening?\" Explore what you can do within policy, such as troubleshooting, a warranty repair or replacement, or store credit. Be clear about what is possible rather than leading with what is not. If a refund needs an exception, say you will request it, explain the next step and timeline, and follow through."
+    },
+    {
+      label: "Late Delivery",
+      text: "A customer's order was promised for last Friday and has not arrived. Tracking has not updated in four days. They needed it for an event this weekend and are threatening to cancel and leave.",
+      model: "Apologize and acknowledge the impact: \"I know you needed this for the weekend, and I'm sorry.\" Investigate while they wait, then be honest about what you know and do not know. Offer real options: expedite a replacement, refund shipping, or cancel for a full refund. Commit to a specific update time and keep it, so the customer is not left guessing."
+    },
+    {
+      label: "Online Review",
+      text: "You notice a customer has posted a scathing public review and tagged the company. It names a specific agent, includes a few exaggerations, and is getting shares.",
+      model: "Do not argue or get defensive, and do not correct details in public. Reply promptly and briefly: thank them for the feedback, apologize that their experience fell short, and invite them to share their case number privately. Then resolve the issue properly in a private channel. If they are satisfied, you may politely invite them to update the review, but never pressure them."
+    },
+    {
+      label: "Wants Manager",
+      text: "A customer refuses to continue with you and insists on speaking to a manager immediately. You believe you can solve their billing problem right now.",
+      model: "Stay calm and do not take it personally. Say: \"Absolutely, I can bring in my manager. So they have the full picture and you don't have to repeat yourself, may I confirm the issue first? I may be able to fix it right now.\" If they still want a manager, do a warm handoff: summarize the case to the manager in front of the customer, so the customer feels heard and the manager starts informed."
+    },
+    {
+      label: "Policy Clash",
+      text: "A customer of eight years asks you to waive a late fee. Policy says you cannot approve it, and they say, \"After all these years, this is how you treat me?\"",
+      model: "Acknowledge their loyalty sincerely: \"I really appreciate eight years with us.\" Briefly explain why the policy exists without hiding behind it. Then offer alternatives: a payment plan, an autopay reminder to prevent a repeat, or a one-time exception request to a supervisor, clearly labeled as a request and not a promise. Tell them when they will hear back and follow up."
+    }
+  ];
+
+  // Related palette, all light enough for dark label text
+  var COLORS = ["#9FD3E6", "#F4A259", "#7FC8B8", "#F7C873", "#8FB5D9", "#E8A798"];
+  var USED_FILL = "#D5D9DD";
+  var USED_TEXT = "#7C8790";
+  var LABEL_TEXT = "#22303C";
+
+  var N = SCENARIOS.length;
+  var SEG = 360 / N;
+  var SPIN_MS = 3000;
+  var EASING = "cubic-bezier(0.12, 0.7, 0.18, 1)";
+
+  var used = [];
+  var ratings = [];   // "same" or "diff" per index
+  var current = -1;   // index of active scenario, -1 if none
+  var rotation = 0;
+  var spinning = false;
+  var completionFired = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var app = $("app"), wheel = $("wheel"), spinBtn = $("spinBtn"), hint = $("hint");
+  var pickList = $("pickList"), picker = $("picker"), progress = $("progress");
+  var panel = $("scenarioPanel"), sTitle = $("scenarioTitle"), sText = $("scenarioText");
+  var response = $("response"), showBtn = $("showBtn"), modelBox = $("modelBox"), modelText = $("modelText");
+  var rateRow = $("rateRow"), sameBtn = $("sameBtn"), diffBtn = $("diffBtn"), thanks = $("thanks");
+  var summary = $("summaryPanel"), summaryText = $("summaryText"), resetBtn = $("resetBtn");
+  var live = $("live");
+
+  var NS = "http://www.w3.org/2000/svg";
+
+  function reducedMotion() {
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+  function pt(angleDeg, r) {
+    var a = angleDeg * Math.PI / 180;
+    return [200 + r * Math.sin(a), 200 - r * Math.cos(a)];
+  }
+  function announce(msg) {
+    live.textContent = "";
+    setTimeout(function () { live.textContent = msg; }, 30);
+  }
+
+  // Build wheel
+  var segEls = [], textEls = [];
+  function buildWheel() {
+    var R = 190;
+    for (var i = 0; i < N; i++) {
+      var c = i * SEG;                 // segment center, clockwise from 12 o'clock
+      var p1 = pt(c - SEG / 2, R), p2 = pt(c + SEG / 2, R);
+      var path = document.createElementNS(NS, "path");
+      path.setAttribute("d", "M200 200 L" + p1[0].toFixed(2) + " " + p1[1].toFixed(2) +
+        " A" + R + " " + R + " 0 0 1 " + p2[0].toFixed(2) + " " + p2[1].toFixed(2) + " Z");
+      path.setAttribute("fill", COLORS[i % COLORS.length]);
+      path.setAttribute("stroke", "#FFFFFF");
+      path.setAttribute("stroke-width", "2");
+      wheel.appendChild(path);
+      segEls.push(path);
+
+      var t = document.createElementNS(NS, "text");
+      t.setAttribute("fill", LABEL_TEXT);
+      t.setAttribute("y", "200");
+      t.setAttribute("dominant-baseline", "central");
+      if (c < 180) {
+        t.setAttribute("transform", "rotate(" + (c - 90) + " 200 200)");
+        t.setAttribute("x", "372");
+        t.setAttribute("text-anchor", "end");
+      } else {
+        t.setAttribute("transform", "rotate(" + (c + 90) + " 200 200)");
+        t.setAttribute("x", "28");
+        t.setAttribute("text-anchor", "start");
+      }
+      t.textContent = SCENARIOS[i].label;
+      wheel.appendChild(t);
+      textEls.push(t);
+    }
+    var ring = document.createElementNS(NS, "circle");
+    ring.setAttribute("cx", "200"); ring.setAttribute("cy", "200"); ring.setAttribute("r", "193");
+    ring.setAttribute("fill", "none"); ring.setAttribute("stroke", "#1B4965"); ring.setAttribute("stroke-width", "8");
+    wheel.appendChild(ring);
+    var hub = document.createElementNS(NS, "circle");
+    hub.setAttribute("cx", "200"); hub.setAttribute("cy", "200"); hub.setAttribute("r", "26");
+    hub.setAttribute("fill", "#1B4965"); hub.setAttribute("stroke", "#F4A259"); hub.setAttribute("stroke-width", "5");
+    wheel.appendChild(hub);
+  }
+
+  function buildPicker() {
+    pickList.innerHTML = "";
+    SCENARIOS.forEach(function (s, i) {
+      var li = document.createElement("li");
+      var b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("data-i", i);
+      b.addEventListener("click", function () { pick(i); });
+      li.appendChild(b);
+      pickList.appendChild(li);
+    });
+  }
+
+  function refresh() {
+    var done = used.filter(Boolean).length;
+    progress.textContent = done + " of " + N + " scenarios completed";
+    for (var i = 0; i < N; i++) {
+      segEls[i].setAttribute("fill", used[i] ? USED_FILL : COLORS[i % COLORS.length]);
+      textEls[i].setAttribute("fill", used[i] ? USED_TEXT : LABEL_TEXT);
+    }
+    var labels = SCENARIOS.map(function (s, i) { return s.label + (used[i] ? " (used)" : ""); });
+    wheel.setAttribute("aria-label", "Scenario wheel with " + N + " segments: " + labels.join(", "));
+
+    var busy = spinning || current !== -1;
+    var allDone = done === N;
+    var btns = pickList.querySelectorAll("button");
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].textContent = (j + 1) + ". " + SCENARIOS[j].label + (used[j] ? " (used)" : "");
+      btns[j].disabled = !!used[j] || busy || allDone;
+    }
+    spinBtn.disabled = busy || allDone;
+    if (allDone) hint.textContent = "All scenarios completed.";
+    else if (spinning) hint.textContent = "Spinning...";
+    else if (current !== -1) hint.textContent = "Finish this scenario to spin again.";
+    else hint.textContent = done === 0 ? "Press SPIN to land on a scenario." : "Press SPIN for the next scenario.";
+  }
+
+  function unusedIndexes() {
+    var out = [];
+    for (var i = 0; i < N; i++) if (!used[i]) out.push(i);
+    return out;
+  }
+
+  // Final rotation so the CENTER of segment idx finishes under the 12 o'clock pointer
+  function finalRotationFor(idx, extraTurns) {
+    var target = ((360 - idx * SEG) % 360 + 360) % 360;
+    var base = ((rotation % 360) + 360) % 360;
+    var delta = ((target - base) + 360) % 360;
+    return rotation + extraTurns * 360 + delta;
+  }
+
+  function spin() {
+    if (spinning || current !== -1) return;
+    var pool = unusedIndexes();
+    if (!pool.length) return;
+    var idx = pool[Math.floor(Math.random() * pool.length)];
+    var turns = 3 + Math.floor(Math.random() * 3);   // 3 to 5 full rotations
+    var finalRot = finalRotationFor(idx, turns);
+    spinning = true;
+    refresh();
+
+    if (reducedMotion()) {
+      wheel.style.transition = "none";
+      wheel.style.transform = "rotate(" + finalRot + "deg)";
+      rotation = finalRot;
+      land(idx);
+      return;
+    }
+
+    wheel.style.transition = "none";
+    wheel.style.transform = "rotate(" + rotation + "deg)";
+    void wheel.offsetWidth; // flush so the transition starts from the current angle
+    wheel.style.transition = "transform " + SPIN_MS + "ms " + EASING;
+    wheel.style.transform = "rotate(" + finalRot + "deg)";
+    rotation = finalRot;
+
+    var landed = false;
+    function done() {
+      if (landed) return;
+      landed = true;
+      wheel.removeEventListener("transitionend", onEnd);
+      land(idx);
+    }
+    function onEnd(e) { if (e.target === wheel && e.propertyName === "transform") done(); }
+    wheel.addEventListener("transitionend", onEnd);
+    setTimeout(done, SPIN_MS + 250);
+  }
+
+  function pick(idx) {
+    if (spinning || current !== -1 || used[idx]) return;
+    var finalRot = finalRotationFor(idx, 0);
+    wheel.style.transition = "none";
+    wheel.style.transform = "rotate(" + finalRot + "deg)";
+    rotation = finalRot;
+    spinning = true;
+    land(idx);
+  }
+
+  function land(idx) {
+    spinning = false;
+    current = idx;
+    var s = SCENARIOS[idx];
+    sTitle.textContent = "Scenario: " + s.label;
+    sText.textContent = s.text;
+    response.value = "";
+    response.readOnly = false;
+    modelText.textContent = s.model;
+    modelBox.hidden = true;
+    rateRow.hidden = true;
+    thanks.hidden = true;
+    showBtn.hidden = false;
+    showBtn.disabled = false;
+    sameBtn.disabled = false;
+    diffBtn.disabled = false;
+    summary.hidden = true;
+    panel.hidden = false;
+    refresh();
+    announce("You landed on " + s.label + ". The scenario is shown below the wheel.");
+    app.scrollTo({ top: Math.max(0, panel.offsetTop - 12), behavior: reducedMotion() ? "auto" : "smooth" });
+    try { sTitle.focus({ preventScroll: true }); } catch (e) { sTitle.focus(); }
+  }
+
+  function showModel() {
+    modelBox.hidden = false;
+    rateRow.hidden = false;
+    showBtn.hidden = true;
+    response.readOnly = true;
+    announce("Model answer shown. Choose how your response compared.");
+    try { sameBtn.focus({ preventScroll: true }); } catch (e) { sameBtn.focus(); }
+    app.scrollTo({ top: Math.max(0, modelBox.offsetTop - 12), behavior: reducedMotion() ? "auto" : "smooth" });
+  }
+
+  function rate(kind) {
+    if (current === -1) return;
+    var idx = current;
+    ratings[idx] = kind;
+    used[idx] = true;
+    current = -1;
+    sameBtn.disabled = true;
+    diffBtn.disabled = true;
+    thanks.textContent = "Thanks for reflecting. " + SCENARIOS[idx].label + " is now marked as used.";
+    thanks.hidden = false;
+    refresh();
+
+    var done = used.filter(Boolean).length;
+    if (done === N) {
+      showSummary();
+      if (!completionFired) {
+        completionFired = true;
+        console.log("Interaction Complete");
+      }
+    } else {
+      announce(SCENARIOS[idx].label + " marked as used. " + (N - done) + " scenarios remaining.");
+      try { spinBtn.focus({ preventScroll: true }); } catch (e) { spinBtn.focus(); }
+      app.scrollTo({ top: 0, behavior: reducedMotion() ? "auto" : "smooth" });
+    }
+  }
+
+  function showSummary() {
+    var same = ratings.filter(function (r) { return r === "same"; }).length;
+    var diff = N - same;
+    summaryText.textContent = "You worked through " + N + " of " + N + " scenarios. " +
+      same + " of your responses were similar to the model answers, and " + diff +
+      " were handled differently.";
+    summary.hidden = false;
+    announce("All scenarios completed. " + same + " similar to the model answers, " + diff + " handled differently.");
+    app.scrollTo({ top: Math.max(0, summary.offsetTop - 12), behavior: reducedMotion() ? "auto" : "smooth" });
+    try { $("summaryTitle").focus({ preventScroll: true }); } catch (e) { $("summaryTitle").focus(); }
+  }
+
+  function reset() {
+    used = []; ratings = [];
+    for (var i = 0; i < N; i++) { used[i] = false; ratings[i] = null; }
+    current = -1; spinning = false;
+    panel.hidden = true; summary.hidden = true;
+    response.value = "";
+    refresh();
+    announce("Reset. All scenarios are available again.");
+    app.scrollTo({ top: 0, behavior: "auto" });
+    spinBtn.focus();
+  }
+
+  spinBtn.addEventListener("click", spin);
+  showBtn.addEventListener("click", showModel);
+  sameBtn.addEventListener("click", function () { rate("same"); });
+  diffBtn.addEventListener("click", function () { rate("diff"); });
+  resetBtn.addEventListener("click", reset);
+
+  buildWheel();
+  buildPicker();
+  for (var k = 0; k < N; k++) { used[k] = false; ratings[k] = null; }
+  refresh();
+})();
+</script>
+</body>
+</html>
